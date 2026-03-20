@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Filament\Resources\Users\Pages;
+
+use App\Filament\Resources\Users\UserResource;
+use Filament\Resources\Pages\CreateRecord;
+
+class CreateUser extends CreateRecord
+{
+    protected static string $resource = UserResource::class;
+
+    protected static ?string $title = 'Kullanıcı ekle';
+
+    /** Rol ID'leri mutateFormDataBeforeCreate'de alınıp afterCreate'de sync için kullanılır. */
+    protected array $pendingRoleIds = [];
+
+    protected function mutateFormDataBeforeCreate(array $data): array
+    {
+        $this->pendingRoleIds = is_array($data['roles'] ?? null) ? $data['roles'] : [];
+        unset($data['roles']);
+        return $data;
+    }
+
+    protected function afterCreate(): void
+    {
+        $ids = array_values(array_filter(array_map('intval', (array) $this->pendingRoleIds)));
+        if ($ids !== []) {
+            $this->getRecord()->roles()->sync($ids);
+        }
+    }
+}
