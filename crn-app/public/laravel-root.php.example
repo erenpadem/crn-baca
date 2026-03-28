@@ -1,0 +1,11 @@
+<?php
+
+/**
+ * Bu dosyayı laravel-root.php olarak kaydedin (public veya public_html içine).
+ * Dönüş değeri: vendor/ ve bootstrap/ klasörlerinin bulunduğu Laravel kökünün
+ * sunucudaki tam yolu.
+ *
+ * Örnek (Linux paylaşımlı hosting):
+ * return '/home/KULLANICI_ADI/crn-app';
+ */
+return '/home/KULLANICI_ADI/crn-app';

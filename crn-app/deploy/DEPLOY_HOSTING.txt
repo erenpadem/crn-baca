@@ -1,0 +1,78 @@
+CRN — Paylaşımlı hosting (CLI yok, public_html)
+===============================================
+
+Bu paket, Laravel kökünü public_html dışında tutup sadece "public" içeriğini
+document root'a koyduğunuz tipik senaryo içindir.
+
+1) Sunucuya yüklenecekler
+-------------------------
+- Tüm Laravel projesi (crn-app): app, bootstrap, config, database, public,
+  resources, routes, storage, vendor, composer.json, artisan, .env
+- vendor: Yerelde `composer install --no-dev --optimize-autoloader` çalıştırıp
+  yükleyin; sunucuda Composer yoksa zorunlu.
+
+2) Klasör düzeni (yaygın)
+-------------------------
+Örnek:
+
+  /home/KULLANICI/
+    crn-app/              <- Laravel kökü (.env burada)
+      app/
+      vendor/
+      bootstrap/
+      storage/
+      public/             <- İçeriği aşağıya kopyalanır veya bu klasör document root yapılır
+    public_html/          <- Sadece public/ içeriği (index.php, .htaccess, …)
+
+3) public_html ile Laravel ayrıysa
+----------------------------------
+- public/ içindeki TÜM dosyaları public_html'e kopyalayın.
+- laravel-root.php.example dosyasını public_html içinde laravel-root.php olarak
+  kaydedin ve içindeki yolu sunucudaki Laravel köküne göre düzenleyin:
+  return '/home/KULLANICI/crn-app';
+
+4) .env (sunucuda)
+------------------
+Hazır şablon: deploy/.env.hosting.example dosyasını Laravel köküne `.env`
+olarak kopyalayın (veya içeriği yapıştırın), sonra değişkenleri doldurun:
+
+- APP_ENV=production, APP_DEBUG=false
+- APP_URL=https://alanadiniz.com (kendi alan adınız)
+- Veritabanı: MySQL bilgilerini panelden alıp DB_* satırlarını doldurun.
+- APP_KEY boş bırakılabilir; crn-install.php ilk çalışmada üretir.
+- Web kurulumu için mutlaka ekleyin:
+  CRN_INSTALL_KEY=uzun-rastgele-bir-parola
+
+  İsteğe bağlı (ilk admin e-posta/şifre):
+  CRN_ADMIN_EMAIL=...
+  CRN_ADMIN_PASSWORD=...
+  CRN_ADMIN_NAME=Yönetici
+
+5) İzinler
+----------
+storage/ ve bootstrap/cache/ yazılabilir olmalı (genelde 755 veya 775).
+
+6) Migrasyon ve Filament kullanıcı (CLI olmadan)
+------------------------------------------------
+Tarayıcıda (bir kez):
+
+  https://alanadiniz.com/crn-install.php?key=CRN_INSTALL_KEY_DEĞERİ
+
+Bu işlem: migrate --force, db:seed (roller, örnek admin/müşteri, maliyet
+parametreleri) ve isteğe bağlı CRN_ADMIN_* ile admin güncellemesi yapar.
+
+Varsayılan seed girişleri (özel admin tanımlamadıysanız):
+  Admin:    admin@crn.local / password   → /admin
+  Müşteri:  musteri@crn.local / password → /musteri
+
+7) Kurulumdan sonra (zorunlu)
+-----------------------------
+- public_html/crn-install.php dosyasını SİLİN.
+- .env içinden CRN_INSTALL_KEY satırını kaldırın veya boş bırakın.
+- storage/framework/crn_install_completed dosyası oluşur; tekrar kurulum
+  istemiyorsanız dokunmayın. Tekrar çalıştırmak için bu dosyayı silin.
+
+8) Document root alternatifi
+----------------------------
+Hosting panelinden document root'u doğrudan .../crn-app/public yapabiliyorsanız
+laravel-root.php gerekmez; public içeriğini ayrı kopyalamazsınız.
