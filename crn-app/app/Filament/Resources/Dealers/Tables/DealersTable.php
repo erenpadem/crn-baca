@@ -17,6 +17,7 @@ class DealersTable
             ->columns([
                 TextColumn::make('firma_no')->label('Firma No')->searchable()->sortable(),
                 TextColumn::make('unvan')->label('Ünvan')->searchable()->sortable(),
+                TextColumn::make('mail')->label('E-posta (panel)')->searchable(),
                 TextColumn::make('il_ilce')->label('İl/İlçe')->searchable(),
                 TextColumn::make('ilgili_kisi')->label('İlgili')->searchable(),
                 TextColumn::make('tel')->label('Tel'),

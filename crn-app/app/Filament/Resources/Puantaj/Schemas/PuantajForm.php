@@ -16,9 +16,14 @@ class PuantajForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'default' => 1,
+                'lg' => 1,
+            ])
             ->components([
                 Section::make('Puantaj Bilgileri')
                     ->description('Personelin günlük devam durumunu kaydedin. Gelmedi seçildiğinde açıklama alanını doldurun.')
+                    ->columnSpanFull()
                     ->schema([
                         Select::make('personel_id')
                             ->label('Personel')
@@ -51,7 +56,11 @@ class PuantajForm
                         Textarea::make('notlar')->label('Notlar')->rows(2)->columnSpanFull(),
                         TimePicker::make('giris_saati')->label('Giriş Saati')->seconds(false),
                         TimePicker::make('cikis_saati')->label('Çıkış Saati')->seconds(false),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
             ]);
     }
 }

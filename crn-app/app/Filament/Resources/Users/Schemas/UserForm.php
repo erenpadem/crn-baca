@@ -13,9 +13,14 @@ class UserForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'default' => 1,
+                'lg' => 1,
+            ])
             ->components([
                 Section::make('Kullanıcı Bilgileri')
-                    ->description('Admin: yönetim paneli. Müşteri: teklif onayı. Bayi: sipariş oluşturma (/bayi). Bu rollerde bayi (firma) seçilmelidir.')
+                    ->description('Admin: yönetim paneli. Müşteri ve bayi: firma portalı (/musteri) — teklif onayı ve sipariş talebi. Bu rollerde firma (bayi) seçilmelidir.')
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('name')->label('Ad')->required()->maxLength(255),
                         TextInput::make('email')->label('E-posta')->email()->required()->maxLength(255),
@@ -32,14 +37,22 @@ class UserForm
                             ->required(fn (string $context): bool => $context === 'create')
                             ->maxLength(255)
                             ->helperText('Düzenlemede boş bırakırsanız şifre değişmez.'),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Roller')
-                    ->description('Admin / Satış / İmalathane: /admin. Müşteri: /musteri. Bayi: /bayi. Müşteri ve Bayi için firma zorunludur.')
+                    ->description('Admin / Satış / İmalathane: /admin. Müşteri ve bayi: /musteri (tek firma portalı). Bu rollerde firma zorunludur.')
+                    ->columnSpanFull()
                     ->schema([
                         CheckboxList::make('roles')
                             ->relationship('roles', 'label')
                             ->label('Roller')
-                            ->columns(2),
+                            ->columns([
+                                'default' => 1,
+                                'md' => 2,
+                            ]),
                     ]),
             ]);
     }

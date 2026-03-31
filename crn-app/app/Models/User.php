@@ -59,13 +59,7 @@ class User extends Authenticatable implements FilamentUser, HasDefaultTenant, Ha
             return $this->hasRole('admin') || $this->hasRole('satis') || $this->hasRole('imalathane');
         }
         if ($panel->getId() === 'musteri') {
-            return $this->hasRole('musteri')
-                && ! $this->hasRole('admin')
-                && ! $this->hasRole('satis')
-                && $this->dealer_id !== null;
-        }
-        if ($panel->getId() === 'bayi') {
-            return $this->hasRole('bayi')
+            return ($this->hasRole('musteri') || $this->hasRole('bayi'))
                 && ! $this->hasRole('admin')
                 && ! $this->hasRole('satis')
                 && $this->dealer_id !== null;
@@ -76,7 +70,7 @@ class User extends Authenticatable implements FilamentUser, HasDefaultTenant, Ha
 
     public function getTenants(Panel $panel): array|Collection
     {
-        if (! in_array($panel->getId(), ['musteri', 'bayi'], true) || $this->dealer_id === null) {
+        if ($panel->getId() !== 'musteri' || $this->dealer_id === null) {
             return collect();
         }
         $dealer = $this->dealer;
@@ -92,7 +86,7 @@ class User extends Authenticatable implements FilamentUser, HasDefaultTenant, Ha
 
     public function getDefaultTenant(Panel $panel): ?Model
     {
-        if (! in_array($panel->getId(), ['musteri', 'bayi'], true)) {
+        if ($panel->getId() !== 'musteri') {
             return null;
         }
 

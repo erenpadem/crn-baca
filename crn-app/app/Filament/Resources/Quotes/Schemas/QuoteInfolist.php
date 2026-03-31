@@ -13,8 +13,13 @@ class QuoteInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'default' => 1,
+                'lg' => 1,
+            ])
             ->components([
                 Section::make('Teklif Bilgileri')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('teklif_no')->label('Teklif No')->getConstantStateUsing(fn (Component $c) => $c->getContainer()->getRecord()?->teklif_no),
                         TextEntry::make('dealer.unvan')->label('Müşteri'),
@@ -24,8 +29,14 @@ class QuoteInfolist
                         self::decimalEntry('musteri_iskonto_yuzde', 'Müşteri İskonto %'),
                         self::decimalEntry('musteri_net_tutar', 'Müşteri net tutar (KDV hariç)'),
                         TextEntry::make('musteri_not')->label('Müşteri notu')->placeholder('–')->columnSpanFull(),
-                    ])->columns(3),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 3,
+                    ]),
                 Section::make('Teklif Kalemleri')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('_kalem_yok_admin')
                             ->hiddenLabel()
@@ -47,11 +58,18 @@ class QuoteInfolist
                                 TextEntry::make('product.birim')->label('Birim'),
                                 self::decimalEntryFromRecord('birim_fiyat', 'Birim Fiyat'),
                                 self::decimalEntryFromRecord('adet', 'Adet'),
-                                self::decimalEntryFromRecord('musteri_maliyet_birim', 'Müşteri maliyet birim'),
-                                self::decimalEntryFromRecord('musteri_birim_fiyat', 'Müşteri satış birim'),
+                                self::decimalEntryFromRecord('musteri_maliyet_birim', 'Müşteri maliyet birim fiyatı (₺)'),
+                                self::decimalEntryFromRecord('musteri_birim_fiyat', 'Müşteri satış birim fiyatı (₺)'),
                                 self::decimalEntryFromRecord('tutar', 'Tutar'),
                             ])
-                            ->columns(8),
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 2,
+                                'md' => 3,
+                                'lg' => 4,
+                                'xl' => 6,
+                                '2xl' => 8,
+                            ]),
                     ]),
             ]);
     }

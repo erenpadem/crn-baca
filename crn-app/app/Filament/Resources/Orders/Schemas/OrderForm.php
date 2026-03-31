@@ -28,8 +28,13 @@ class OrderForm
         $ozellikAciklama = Order::ozellikKoduAciklamalari();
 
         return $schema
+            ->columns([
+                'default' => 1,
+                'lg' => 1,
+            ])
             ->components([
                 Section::make($isBayi ? 'Teklif talebi' : 'Sipariş Bilgileri')
+                    ->columnSpanFull()
                     ->description($isBayi
                         ? 'Baca ölçüleri, istediğiniz iskonto ve ürün kalemleri. Kaydettikten sonra teklifi satışa gönderebilirsiniz; birim fiyatlar sizde görünmez (liste fiyatı arka planda kullanılır).'
                         : 'Ön sipariş no, tarih, proje; çizimdeki sipariş başlığı ile uyumludur.')
@@ -76,7 +81,10 @@ class OrderForm
                                 Toggle::make('attr_h')->label('H kodu geçerli')->helperText($ozellikAciklama['attr_h'])->inline(false),
                                 Toggle::make('attr_di')->label('DI kodu geçerli')->helperText($ozellikAciklama['attr_di'])->inline(false),
                             ])
-                            ->columns(1)
+                            ->columns([
+                                'default' => 1,
+                                'md' => 2,
+                            ])
                             ->columnSpanFull(),
                         Select::make('durum')
                             ->label('Durum')
@@ -100,22 +108,33 @@ class OrderForm
                         self::decimalInput('iskonto_yuzde', 'İskonto %'),
                         Textarea::make('aciklama')->label('Açıklama')->rows(2)->columnSpanFull(),
                         Toggle::make('bayiye_fiyat_goster')
-                            ->label('Bayi panelinde fiyat ve tutarları göster')
-                            ->helperText('Maliyet / fiyatlandırma tamamlandığında açın; bayi talep detayında kalem fiyatları ve hesap özetini görür.')
+                            ->label('Firma panelinde fiyat ve tutarları göster')
+                            ->helperText('Maliyet / fiyatlandırma tamamlandığında açın; firma panelinde talep detayında kalem fiyatları ve hesap özetini görür.')
                             ->visible(fn () => ! $isBayi)
                             ->columnSpanFull(),
-                    ])->columns(3),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 3,
+                    ]),
                 Section::make('Kur ve ön / nihai tutar (KDV hariç)')
                     ->description('Boş bırakılan tutarlar kalemler ve iskontodan otomatik hesaplanır. Kur farkı % örneği: 10 → taban tutara %10 ekler.')
+                    ->columnSpanFull()
                     ->visible(fn () => ! $isBayi)
                     ->schema([
                         self::decimalInput('kur', 'Kur', null),
                         self::decimalInput('kur_farki_yuzde', 'Kur farkı %', 10),
                         self::decimalInput('tutar_kdvsiz_on', 'Ön tutar (KDV hariç, manuel)', null),
                         self::decimalInput('tutar_kdvsiz_nihai', 'Nihai tutar (KDV hariç, manuel)', null),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Opsiyonel hizmetler')
                     ->description('Anahtarı açınca ilgili tutar alanı görünür ve genel toplama (KDV öncesi) eklenir. Kapalı bırakırsanız o hizmet hesaba katılmaz. Yukarıdaki N / M / A / H / DI kodlarından farklıdır; onlar sadece çizimdeki işaretlerin kaydıdır.')
+                    ->columnSpanFull()
                     ->visible(fn () => ! $isBayi)
                     ->schema([
                         Toggle::make('opsiyonel_nakliye')->label('Nakliye')->live(),
@@ -129,23 +148,38 @@ class OrderForm
                         Toggle::make('opsiyonel_diger')->label('Diğer')->live(),
                         self::decimalInput('diger_tutari', 'Diğer tutar', null)->visible(fn ($get) => $get('opsiyonel_diger')),
                         TextInput::make('diger_aciklama')->label('Diğer açıklama')->maxLength(500)->visible(fn ($get) => $get('opsiyonel_diger'))->columnSpanFull(),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('KDV ve onay')
+                    ->columnSpanFull()
                     ->schema([
                         ...($isBayi
                             ? [Hidden::make('kdv_orani')->default(20)->dehydrated()]
                             : [self::decimalInput('kdv_orani', 'KDV %', 20)]),
                         Checkbox::make('kvkk_onay')->label('Aydınlatma metni / sipariş onayı (KVKK)'),
                     ])
-                    ->columns(2),
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Üretici / seri (yönetim)')
+                    ->columnSpanFull()
                     ->visible(fn () => ! $isBayi)
                     ->schema([
                         TextInput::make('seri_no')->label('Seri (S)')->maxLength(80),
                         TextInput::make('yeni_seri_no')->label('Yeni seri')->maxLength(80),
                         DatePicker::make('yeni_seri_tarihi')->label('Yeni seri tarihi'),
-                    ])->columns(3),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 3,
+                    ]),
                 Section::make('Sipariş Kalemleri')
+                    ->columnSpanFull()
                     ->description($isBayi
                         ? 'Ürün seçin ve adet girin. Birim fiyat bayi ekranında gösterilmez; sistem liste fiyatını kullanır.'
                         : 'Ürün listesinden adetli seçim; tutar satır bazında hesaplanır.')
@@ -169,7 +203,8 @@ class OrderForm
                                         if ($state && $p = Product::find($state)) {
                                             $set('birim_fiyat', $p->fiyat_liste);
                                         }
-                                    }),
+                                    })
+                                    ->columnSpanFull(),
                                 $isBayi
                                     ? Hidden::make('birim_fiyat')
                                         ->default(0)
@@ -177,7 +212,18 @@ class OrderForm
                                     : self::decimalInput('birim_fiyat', 'Birim Fiyat', 0)->required(),
                                 self::decimalInput('adet', 'Adet', 1)->required(),
                             ])
-                            ->columns($isBayi ? 2 : 3)
+                            ->columns(
+                                $isBayi
+                                    ? [
+                                        'default' => 1,
+                                        'md' => 2,
+                                    ]
+                                    : [
+                                        'default' => 1,
+                                        'md' => 2,
+                                        'xl' => 3,
+                                    ]
+                            )
                             ->defaultItems(0)
                             ->addActionLabel('Kalem Ekle'),
                     ]),

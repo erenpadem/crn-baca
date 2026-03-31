@@ -1,9 +1,9 @@
 <?php
 
-namespace App\Filament\Bayi\Resources\OrderResource\Pages;
+namespace App\Filament\Musteri\Resources\OrderResource\Pages;
 
-use App\Filament\Bayi\Resources\OrderResource;
-use App\Filament\Bayi\Resources\OrderResource\Concerns\SyncsBayiLineListPrices;
+use App\Filament\Musteri\Resources\OrderResource;
+use App\Filament\Musteri\Resources\OrderResource\Concerns\SyncsBayiLineListPrices;
 use App\Models\Order;
 use Filament\Resources\Pages\CreateRecord;
 

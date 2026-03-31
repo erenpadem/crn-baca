@@ -11,7 +11,11 @@ class ProductInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns(3)
+            ->columns([
+                'default' => 1,
+                'md' => 2,
+                'xl' => 3,
+            ])
             ->components([
 
                 TextEntry::make('malzeme_kodu')
@@ -52,6 +56,7 @@ class ProductInfolist
                 if ($state === null || $state === '') {
                     return '–';
                 }
+
                 return number_format((float) $state, 4, ',', '.');
             })
             ->placeholder('–');

@@ -1,10 +1,10 @@
 # CRN Baca – Maliyet & Teklif Paneli
 
-Baca firması için maliyet hesabı, ürün yönetimi, teklif ve sipariş takibi. İki panel: **Admin (CRN)** ve **Müşteri**.
+Baca firması için maliyet hesabı, ürün yönetimi, teklif ve sipariş takibi. İki panel: **Admin (CRN)** ve **Firma** (müşteri + bayi tek giriş).
 
 - **Admin panel** (`/admin`): Ürünler, maliyet parametreleri, bayiler, teklifler, siparişler, roller.
 - **Toplu içe aktarma:** Maliyet parametreleri ve ürünler listelerinden CSV/Excel import — şema: `docs/IMPORT_MALIYET_URUNLER.md`, örnek CSV: `storage/app/schemas/ornek_*_import.csv`.
-- **Müşteri panel** (`/musteri`): Sadece kendi tekliflerini görüntüleme, onaylama/reddetme, iskonto belirleme.
+- **Firma panel** (`/musteri`): Teklifleri görüntüleme ve onaylama; `bayi` rolünde sipariş talebi oluşturma ve cari bilgiler. Eski `/bayi` adresi `/musteri` adresine yönlendirilir.
 
 ## Hızlı başlangıç (Docker)
 
@@ -18,7 +18,7 @@ docker compose exec app php artisan db:seed --force
 
 - Uygulama: http://localhost:8000  
 - Admin: http://localhost:8000/admin — `admin@crn.local` / `password`  
-- Müşteri: http://localhost:8000/musteri — `musteri@crn.local` / `password`
+- Firma (ör. müşteri): http://localhost:8000/musteri — `musteri@crn.local` / `password`
 
 ## Yerel (MySQL)
 

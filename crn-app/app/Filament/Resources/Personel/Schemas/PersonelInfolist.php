@@ -11,8 +11,13 @@ class PersonelInfolist
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'default' => 1,
+                'lg' => 1,
+            ])
             ->components([
                 Section::make('Kişisel Bilgiler')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('ad_soyad')->label('Ad Soyad'),
                         TextEntry::make('departman')->label('Departman'),
@@ -21,14 +26,24 @@ class PersonelInfolist
                         TextEntry::make('email')->label('E-posta'),
                         TextEntry::make('evli')->label('Evli')->badge()->formatStateUsing(fn ($state) => $state ? 'Evet' : 'Hayır'),
                         TextEntry::make('dogum_yeri')->label('Doğum Yeri'),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Acil Durum Bilgileri')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('acil_durum_kisi')->label('Acil Durum Kişisi'),
                         TextEntry::make('acil_durum_telefonu')->label('Acil Durum Telefonu'),
                         TextEntry::make('kan_grubu')->label('Kan Grubu'),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Durum')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('aktif')->label('Aktif')->badge()->formatStateUsing(fn ($state) => $state ? 'Aktif' : 'Pasif'),
                     ]),

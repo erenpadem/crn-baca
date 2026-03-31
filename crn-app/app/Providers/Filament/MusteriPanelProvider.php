@@ -29,8 +29,9 @@ class MusteriPanelProvider extends PanelProvider
             ->tenant(Dealer::class, ownershipRelationship: 'dealer')
             ->tenantMenu(false)
             ->login()
-            ->brandName('CRN Baca - Müşteri Paneli')
+            ->brandName('CRN Baca - Firma')
             ->navigationGroups([
+                'Hesabım',
                 'Tekliflerim',
                 'Siparişler',
             ])

@@ -12,7 +12,10 @@ class ProductForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
-            ->columns(2)
+            ->columns([
+                'default' => 1,
+                'md' => 2,
+            ])
             ->components([
 
                 Text::make('Excel LİSTE / SatışFiyat sayfalarındaki malzeme kodları ve birim fiyatlar. Teklif ve sipariş kalemlerinde kullanılır.')
@@ -42,8 +45,7 @@ class ProductForm
                     ->maxLength(20)
                     ->placeholder('AD, M, KG vb.')
                     ->dehydrateStateUsing(
-                        fn($state) =>
-                        filled($state) ? trim((string) $state) : 'AD'
+                        fn ($state) => filled($state) ? trim((string) $state) : 'AD'
                     )
                     ->helperText('Ölçü birimi: AD = Adet, M = Metre, KG = Kilogram.'),
 
@@ -77,6 +79,7 @@ class ProductForm
                 if ($state === '' || $state === null) {
                     return null;
                 }
+
                 return str_replace(',', '.', (string) $state);
             });
     }

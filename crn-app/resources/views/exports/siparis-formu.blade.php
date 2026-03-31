@@ -1,16 +1,23 @@
-{{-- Excel örnek Sipariş Formuna sadık - CRN Baca --}}
+{{-- Panel sipariş infolist / kalem tablosu ile uyumlu - CRN Baca --}}
+@php
+    use App\Services\FormExportService;
+    $kdvOran = (float) ($order->kdv_orani ?? 20);
+    $kdvEtiket = abs($kdvOran - round($kdvOran)) < 0.001 ? (string) (int) round($kdvOran) : number_format($kdvOran, 2, '.', '');
+    $yonTxt = FormExportService::orderYonEtiketi($order->yon);
+    $ozellikTxt = FormExportService::orderOzelliklerMetni($order);
+@endphp
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <title>Sipariş Formu - {{ $order->siparis_no }}</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 7px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #333; padding: 4px 6px; text-align: left; }
+        th, td { border: 1px solid #333; padding: 2px 3px; text-align: left; }
         th { background: #eee; }
-        .header-table td { border: none; padding: 2px 8px 2px 0; }
-        .label { font-weight: bold; width: 140px; }
+        .header-table td { border: none; padding: 2px 6px 2px 0; }
+        .label { font-weight: bold; width: 110px; }
         .text-right { text-align: right; }
         .toplam-row { font-weight: bold; }
     </style>
@@ -24,6 +31,10 @@
             <td></td>
             <td class="label">Sipariş No:</td>
             <td>{{ $order->siparis_no }}</td>
+        </tr>
+        <tr>
+            <td class="label">Ön sipariş no:</td>
+            <td colspan="4">{{ $order->on_siparis_no ?? '—' }}</td>
         </tr>
         <tr>
             <td class="label">SİPARİŞİ VEREN FİRMA</td>
@@ -53,21 +64,33 @@
             <td class="label">Tel:</td>
             <td>{{ $order->dealer?->tel ?? '' }}</td>
         </tr>
+        <tr>
+            <td class="label">Baca çapı (mm):</td>
+            <td>{{ $order->bac_cap_mm !== null ? number_format((float) $order->bac_cap_mm, 2, ',', '.') : '—' }}</td>
+            <td class="label">Baca yüksekliği (mm):</td>
+            <td colspan="2">{{ $order->bac_yukseklik_mm !== null ? number_format((float) $order->bac_yukseklik_mm, 2, ',', '.') : '—' }}</td>
+        </tr>
+        <tr>
+            <td class="label">Yön:</td>
+            <td>{{ $yonTxt !== '' ? $yonTxt : '—' }}</td>
+            <td class="label">Özellik kodları:</td>
+            <td colspan="2">{{ $ozellikTxt !== '' ? $ozellikTxt : '—' }}</td>
+        </tr>
     </table>
     <br>
-    @php
-        $siparisAraToplam = $order->items->sum(fn ($i) => (float) ($i->tutar ?? ($i->birim_fiyat * $i->adet)));
-    @endphp
     <table>
         <thead>
             <tr>
                 <th>No</th>
-                <th>MALZEME KODU</th>
-                <th>MALZEME AÇIKLAMASI</th>
+                <th>KOD</th>
+                <th>AÇIKLAMA</th>
                 <th>BİRİM</th>
                 <th>BİRİM FİYAT</th>
                 <th>ADET</th>
                 <th>TUTAR</th>
+                <th>KARŞI TEKLİF</th>
+                <th>Uzunluk (m)</th>
+                <th>Sac kalınlık</th>
             </tr>
         </thead>
         <tbody>
@@ -78,9 +101,12 @@
                 <td>{{ $item->product?->malzeme_kodu ?? '' }}</td>
                 <td>{{ $item->product?->malzeme_aciklamasi ?? '' }}</td>
                 <td>{{ $item->product?->birim ?? 'AD' }}</td>
-                <td class="text-right">{{ number_format($item->birim_fiyat, 2, ',', '.') }}</td>
-                <td class="text-right">{{ number_format($item->adet, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float) $item->birim_fiyat, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float) $item->adet, 2, ',', '.') }}</td>
                 <td class="text-right">{{ number_format($satirTutar, 2, ',', '.') }}</td>
+                <td class="text-right">{{ $item->bayi_karsi_birim_fiyat !== null ? number_format((float) $item->bayi_karsi_birim_fiyat, 2, ',', '.') : '—' }}</td>
+                <td class="text-right">{{ $item->product?->uzunluk_m !== null ? number_format((float) $item->product->uzunluk_m, 4, ',', '.') : '—' }}</td>
+                <td class="text-right">{{ $item->product?->sac_kalinlik !== null ? number_format((float) $item->product->sac_kalinlik, 4, ',', '.') : '—' }}</td>
             </tr>
             @endforeach
         </tbody>
@@ -89,19 +115,31 @@
     <table class="header-table">
         <tr>
             <td class="label">İskonto %:</td>
-            <td>{{ $order->iskonto_yuzde !== null ? number_format($order->iskonto_yuzde, 2) : '' }}</td>
+            <td>{{ $order->iskonto_yuzde !== null ? number_format((float) $order->iskonto_yuzde, 2, ',', '.') : '—' }}</td>
         </tr>
         <tr class="toplam-row">
-            <td class="label">Ara Toplam:</td>
-            <td class="text-right">{{ number_format($siparisAraToplam, 2, ',', '.') }} TL</td>
+            <td class="label">Kalem toplamı (iskonto sonrası, KDV hariç):</td>
+            <td class="text-right">{{ number_format($order->kalem_net_kdvsiz, 2, ',', '.') }} TL</td>
         </tr>
         <tr>
-            <td class="label">KDV (%18):</td>
-            <td class="text-right">{{ number_format($siparisAraToplam * 0.18, 2, ',', '.') }} TL</td>
+            <td class="label">Ön tutar (hesaplanan, KDV hariç):</td>
+            <td class="text-right">{{ number_format($order->hesaplanan_kdvsiz_on, 2, ',', '.') }} TL</td>
+        </tr>
+        <tr>
+            <td class="label">Nihai taban (kur farkı sonrası):</td>
+            <td class="text-right">{{ number_format($order->hesaplanan_kdvsiz_nihai, 2, ',', '.') }} TL</td>
         </tr>
         <tr class="toplam-row">
-            <td class="label">TOPLAM:</td>
-            <td class="text-right">{{ number_format($siparisAraToplam * 1.18, 2, ',', '.') }} TL</td>
+            <td class="label">Ara toplam (KDV hariç):</td>
+            <td class="text-right">{{ number_format($order->ara_toplam_kdvsiz, 2, ',', '.') }} TL</td>
+        </tr>
+        <tr>
+            <td class="label">KDV (%{{ $kdvEtiket }}):</td>
+            <td class="text-right">{{ number_format($order->kdv_tutari, 2, ',', '.') }} TL</td>
+        </tr>
+        <tr class="toplam-row">
+            <td class="label">GENEL TOPLAM:</td>
+            <td class="text-right">{{ number_format($order->genel_toplam, 2, ',', '.') }} TL</td>
         </tr>
         @if($order->aciklama)
         <tr>

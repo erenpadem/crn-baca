@@ -20,8 +20,10 @@ class QuoteItemImporter extends Importer
         return [
             ImportColumn::make('teklif_no')->label('Teklif No')->requiredMapping()->rules(['required']),
             ImportColumn::make('malzeme_kodu')->label('Malzeme Kodu')->requiredMapping()->rules(['required']),
-            ImportColumn::make('birim_fiyat')->label('Birim Fiyat')->numeric()->requiredMapping()->rules(['required', 'numeric']),
+            ImportColumn::make('birim_fiyat')->label('Birim Fiyat (iç)')->numeric()->requiredMapping()->rules(['required', 'numeric']),
             ImportColumn::make('adet')->label('Adet')->numeric()->ignoreBlankState()->rules(['nullable', 'numeric']),
+            ImportColumn::make('musteri_maliyet_birim')->label('Müşteri maliyet birim')->numeric()->ignoreBlankState()->rules(['nullable', 'numeric']),
+            ImportColumn::make('musteri_birim_fiyat')->label('Müşteri satış birim')->numeric()->ignoreBlankState()->rules(['nullable', 'numeric']),
         ];
     }
 
@@ -36,12 +38,20 @@ class QuoteItemImporter extends Importer
             throw ValidationException::withMessages(['malzeme_kodu' => 'Ürün bulunamadı: '.($this->data['malzeme_kodu'] ?? '')]);
         }
 
-        return new QuoteItem([
+        $row = [
             'quote_id' => $quote->id,
             'product_id' => $product->id,
             'birim_fiyat' => (float) ($this->data['birim_fiyat'] ?? 0),
             'adet' => (float) ($this->data['adet'] ?? 1),
-        ]);
+        ];
+        if (isset($this->data['musteri_maliyet_birim']) && $this->data['musteri_maliyet_birim'] !== '' && $this->data['musteri_maliyet_birim'] !== null) {
+            $row['musteri_maliyet_birim'] = (float) $this->data['musteri_maliyet_birim'];
+        }
+        if (isset($this->data['musteri_birim_fiyat']) && $this->data['musteri_birim_fiyat'] !== '' && $this->data['musteri_birim_fiyat'] !== null) {
+            $row['musteri_birim_fiyat'] = (float) $this->data['musteri_birim_fiyat'];
+        }
+
+        return new QuoteItem($row);
     }
 
     public static function getCompletedNotificationBody(Import $import): string

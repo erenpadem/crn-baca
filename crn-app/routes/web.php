@@ -3,6 +3,9 @@
 use App\Http\Controllers\FormExportController;
 use Illuminate\Support\Facades\Route;
 
+Route::redirect('/bayi', '/musteri');
+Route::redirect('/bayi/login', '/musteri/login');
+
 Route::get('/', function () {
     return view('welcome');
 });

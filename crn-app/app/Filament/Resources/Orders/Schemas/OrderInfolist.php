@@ -4,11 +4,14 @@ namespace App\Filament\Resources\Orders\Schemas;
 
 use App\Models\Order;
 use App\Models\OrderItem;
+use App\Models\User;
 use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Infolists\Components\RepeatableEntry\TableColumn;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Auth;
 
 class OrderInfolist
 {
@@ -21,13 +24,25 @@ class OrderInfolist
         $isBayi = $context === self::CONTEXT_BAYI;
 
         return $schema
+            ->columns([
+                'default' => 1,
+                'lg' => 1,
+            ])
             ->components([
                 Section::make($isBayi ? 'Teklif talebi' : 'Sipariş Bilgileri')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('siparis_no')->label($isBayi ? 'Talep no' : 'Sipariş No')->getConstantStateUsing(fn (Component $c) => $c->getContainer()->getRecord()?->siparis_no),
                         TextEntry::make('on_siparis_no')->label('Ön sipariş no')->placeholder('–'),
                         TextEntry::make('dealer.unvan')->label('Müşteri')
-                            ->visible(fn () => ! $isBayi && ! auth()->user()?->hasRole('imalathane')),
+                            ->visible(function () use ($isBayi) {
+                                if ($isBayi) {
+                                    return false;
+                                }
+                                $user = Auth::user();
+
+                                return ! ($user instanceof User && $user->hasRole('imalathane'));
+                            }),
                         TextEntry::make('siparis_tarihi')->label('Tarih')->date('d.m.Y'),
                         TextEntry::make('durum')->label('Durum')->badge()
                             ->formatStateUsing(fn ($state) => Order::durumEtiketi($state)),
@@ -35,11 +50,28 @@ class OrderInfolist
                         TextEntry::make('cihaz_marka_model')->label('Cihaz Marka/Model'),
                         self::decimalEntry('bac_cap_mm', 'Baca çapı (mm)'),
                         self::decimalEntry('bac_yukseklik_mm', 'Baca yüksekliği (mm)'),
-                        TextEntry::make('yon')->label('Yön')->formatStateUsing(fn ($s) => match ($s) {
-                            'yatay' => 'Yatay',
-                            'dikey' => 'Dikey',
-                            default => $s ? (string) $s : '–',
-                        }),
+                        TextEntry::make('yon')
+                            ->label('Yön')
+                            ->badge()
+                            ->getConstantStateUsing(function (Component $c): string {
+                                $record = $c->getContainer()->getRecord();
+                                if (! $record instanceof Order) {
+                                    return '–';
+                                }
+                                $s = $record->getAttribute('yon');
+
+                                return match ($s) {
+                                    'yatay' => 'Yatay',
+                                    'dikey' => 'Dikey',
+                                    null, '' => '–',
+                                    default => is_string($s) ? $s : (string) $s,
+                                };
+                            })
+                            ->color(fn (?string $state): string => match ($state) {
+                                'Yatay' => 'info',
+                                'Dikey' => 'success',
+                                default => 'gray',
+                            }),
                         TextEntry::make('ozellik_etiketleri')->label('Çizim / form özellik kodları (hangileri geçerli)')
                             ->getStateUsing(function (?Order $record): array {
                                 if (! $record) {
@@ -72,19 +104,30 @@ class OrderInfolist
 
                                 return $order instanceof Order && ! $order->bayiye_fiyat_goster;
                             })
-                            ->getConstantStateUsing(fn (): string => 'Birim fiyat ve maliyet özeti, satış ekibi admin panelinde “Bayi panelinde fiyat ve tutarları göster” seçeneğini işaretleyene kadar burada gösterilmez.')
+                            ->getConstantStateUsing(fn (): string => 'Birim fiyat ve maliyet özeti, satış ekibi admin panelinde “Firma panelinde fiyat ve tutarları göster” seçeneğini işaretleyene kadar burada gösterilmez.')
                             ->color('gray')
                             ->columnSpanFull(),
-                    ])->columns(3),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 3,
+                    ]),
                 Section::make('Kur ve tutarlar (KDV hariç)')
+                    ->columnSpanFull()
                     ->visible(fn (Component $c) => ! $isBayi || self::bayiPricingUnlocked($c))
                     ->schema([
                         self::decimalEntry('kur', 'Kur'),
                         self::decimalEntry('kur_farki_yuzde', 'Kur farkı %'),
                         self::decimalEntry('tutar_kdvsiz_on', 'Ön tutar (manuel)'),
                         self::decimalEntry('tutar_kdvsiz_nihai', 'Nihai tutar (manuel)'),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Opsiyonel hizmetler')
+                    ->columnSpanFull()
                     ->visible(fn (Component $c) => ! $isBayi || self::bayiPricingUnlocked($c))
                     ->schema([
                         TextEntry::make('nakliye_ozet')->label('Nakliye')
@@ -105,8 +148,13 @@ class OrderInfolist
 
                                 return $t.$a;
                             }),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Hesap özeti')
+                    ->columnSpanFull()
                     ->visible(fn (Component $c) => ! $isBayi || self::bayiPricingUnlocked($c))
                     ->schema([
                         TextEntry::make('kalem_net_kdvsiz')->label('Kalem toplamı (iskonto sonrası, KDV hariç)')
@@ -123,9 +171,14 @@ class OrderInfolist
                             ->formatStateUsing(fn ($s) => self::fmtMoney((float) $s))->weight('bold'),
                         TextEntry::make('kdv_orani')->label('KDV %')->formatStateUsing(fn ($s) => $s !== null ? number_format((float) $s, 2, ',', '.') : '20'),
                         TextEntry::make('kvkk_onay')->label('KVKK / sipariş onayı')->formatStateUsing(fn ($s) => $s ? 'Evet' : 'Hayır'),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Bayi karşı teklifi')
-                    ->visible(function (Component $c) use ($isBayi): bool {
+                    ->columnSpanFull()
+                    ->visible(function (Component $c): bool {
                         $order = self::orderFromInfolistComponent($c);
 
                         return $order instanceof Order && self::orderHasBayiKarsiData($order);
@@ -156,39 +209,89 @@ class OrderInfolist
 
                                 return $t > 0 ? self::fmtMoney($t) : '—';
                             }),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Üretici / seri')
+                    ->columnSpanFull()
                     ->visible(fn () => ! $isBayi)
                     ->schema([
                         TextEntry::make('seri_no')->label('Seri (S)')->placeholder('–'),
                         TextEntry::make('yeni_seri_no')->label('Yeni seri')->placeholder('–'),
                         TextEntry::make('yeni_seri_tarihi')->label('Yeni seri tarihi')->date('d.m.Y')->placeholder('–'),
                         TextEntry::make('imalat_listesi_cikti_at')->label('İmalat listesi')->dateTime('d.m.Y H:i')->placeholder('Henüz oluşturulmadı'),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Malzeme ve Gereksinimler')
+                    ->columnSpanFull()
                     ->description($isBayi
                         ? 'Ürün kalemleri; fiyat sütunları satış paylaştığında görünür.'
-                        : 'İmalathane için üretim kalemleri – malzeme kodu, açıklama, adet, birim.')
+                        : 'İmalathane için üretim kalemleri (tablo: kod, ölçüler, adet ve fiyatlar).')
                     ->schema([
-                        RepeatableEntry::make('items')
-                            ->schema([
-                                TextEntry::make('product.malzeme_kodu')->label('Malzeme Kodu'),
-                                TextEntry::make('product.malzeme_aciklamasi')->label('Açıklama'),
-                                TextEntry::make('product.birim')->label('Birim'),
-                                self::decimalEntryFromRecord('adet', 'Adet'),
-                                self::decimalEntryFromRecord('birim_fiyat', 'Birim Fiyat')
-                                    ->visible(fn (Component $c) => ! $isBayi || self::bayiPricingUnlocked($c)),
-                                self::decimalEntryFromRecord('tutar', 'Tutar')
-                                    ->visible(fn (Component $c) => ! $isBayi || self::bayiPricingUnlocked($c)),
-                                self::decimalEntryFromRecord('bayi_karsi_birim_fiyat', 'Karşı teklif birim')
-                                    ->visible(fn (Component $c) => ! $isBayi || self::showBayiKarsiBirimInItemsColumn($c, $isBayi)),
-                                self::decimalEntryFromRelation('product.uzunluk_m', 'Uzunluk (m)')
-                                    ->visible(fn () => ! $isBayi),
-                                self::decimalEntryFromRelation('product.sac_kalinlik', 'Sac Kalınlık')
-                                    ->visible(fn () => ! $isBayi),
-                            ])
-                            ->columns($isBayi ? 7 : 9),
+                        self::orderItemsRepeatable($isBayi),
                     ]),
+            ]);
+    }
+
+    protected static function orderItemsRepeatable(bool $isBayi): RepeatableEntry
+    {
+        if ($isBayi) {
+            return RepeatableEntry::make('items')
+                ->columnSpanFull()
+                ->table([
+                    TableColumn::make('Malzeme kodu'),
+                    TableColumn::make('Açıklama'),
+                    TableColumn::make('Birim'),
+                    TableColumn::make('Adet'),
+                    TableColumn::make('Birim fiyat'),
+                    TableColumn::make('Tutar'),
+                    TableColumn::make('Karşı teklif birim'),
+                ])
+                ->schema([
+                    TextEntry::make('product.malzeme_kodu')->hiddenLabel()->placeholder('–'),
+                    TextEntry::make('product.malzeme_aciklamasi')->hiddenLabel()->placeholder('–'),
+                    TextEntry::make('product.birim')->hiddenLabel()->placeholder('–'),
+                    self::decimalEntryFromRecord('adet', 'Adet')->hiddenLabel(),
+                    self::decimalEntryFromRecord('birim_fiyat', 'Birim Fiyat')
+                        ->hiddenLabel()
+                        ->visible(fn (Component $c) => self::bayiPricingUnlocked($c)),
+                    self::decimalEntryFromRecord('tutar', 'Tutar')
+                        ->hiddenLabel()
+                        ->visible(fn (Component $c) => self::bayiPricingUnlocked($c)),
+                    self::decimalEntryFromRecord('bayi_karsi_birim_fiyat', 'Karşı teklif birim')
+                        ->hiddenLabel()
+                        ->visible(fn (Component $c) => self::showBayiKarsiBirimInItemsColumn($c, true)),
+                ]);
+        }
+
+        return RepeatableEntry::make('items')
+            ->columnSpanFull()
+            ->table([
+                TableColumn::make('Malzeme kodu'),
+                TableColumn::make('Açıklama'),
+                TableColumn::make('Birim'),
+                TableColumn::make('Adet'),
+                TableColumn::make('Birim fiyat'),
+                TableColumn::make('Tutar'),
+                TableColumn::make('Karşı teklif birim'),
+                TableColumn::make('Uzunluk (m)'),
+                TableColumn::make('Sac kalınlık'),
+            ])
+            ->schema([
+                TextEntry::make('product.malzeme_kodu')->hiddenLabel()->placeholder('–'),
+                TextEntry::make('product.malzeme_aciklamasi')->hiddenLabel()->placeholder('–'),
+                TextEntry::make('product.birim')->hiddenLabel()->placeholder('–'),
+                self::decimalEntryFromRecord('adet', 'Adet')->hiddenLabel(),
+                self::decimalEntryFromRecord('birim_fiyat', 'Birim Fiyat')->hiddenLabel(),
+                self::decimalEntryFromRecord('tutar', 'Tutar')->hiddenLabel(),
+                self::decimalEntryFromRecord('bayi_karsi_birim_fiyat', 'Karşı teklif birim')->hiddenLabel(),
+                self::decimalEntryFromRelation('product.uzunluk_m', 'Uzunluk (m)')->hiddenLabel(),
+                self::decimalEntryFromRelation('product.sac_kalinlik', 'Sac kalınlık')->hiddenLabel(),
             ]);
     }
 

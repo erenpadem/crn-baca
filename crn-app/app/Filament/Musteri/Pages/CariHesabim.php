@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Filament\Bayi\Pages;
+namespace App\Filament\Musteri\Pages;
 
 use BackedEnum;
 use Filament\Facades\Filament;
@@ -17,11 +17,16 @@ class CariHesabim extends Page
 
     protected static ?int $navigationSort = -10;
 
-    protected string $view = 'filament.bayi.pages.cari-hesabim';
+    protected string $view = 'filament.musteri.pages.cari-hesabim';
 
     public function getHeading(): string
     {
         return 'Cari hesabım';
+    }
+
+    public function getSubheading(): ?string
+    {
+        return 'Firma kaydınızda tutulan iletişim ve adres bilgileri. Değişiklik için CRN ile iletişime geçin.';
     }
 
     public function getDealer(): ?\App\Models\Dealer

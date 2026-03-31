@@ -13,9 +13,14 @@ class PersonelForm
     public static function configure(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'default' => 1,
+                'lg' => 1,
+            ])
             ->components([
                 Section::make('Kişisel Bilgiler')
                     ->description('Personel iletişim ve temel bilgiler.')
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('ad_soyad')->label('Ad Soyad')->required()->maxLength(255),
                         Select::make('departman')
@@ -28,8 +33,13 @@ class PersonelForm
                         TextInput::make('email')->label('E-posta')->email()->maxLength(255),
                         Toggle::make('evli')->label('Evli')->default(false),
                         TextInput::make('dogum_yeri')->label('Doğum Yeri')->maxLength(255),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Acil Durum Bilgileri')
+                    ->columnSpanFull()
                     ->schema([
                         TextInput::make('acil_durum_kisi')->label('Acil Durum Kişisi')->maxLength(255),
                         TextInput::make('acil_durum_telefonu')->label('Acil Durum Telefonu')->tel()->maxLength(50),
@@ -42,8 +52,13 @@ class PersonelForm
                                 '0+' => '0+', '0-' => '0-',
                             ])
                             ->nullable(),
-                    ])->columns(2),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ]),
                 Section::make('Durum')
+                    ->columnSpanFull()
                     ->schema([
                         Toggle::make('aktif')->label('Aktif Personel')->default(true),
                     ]),

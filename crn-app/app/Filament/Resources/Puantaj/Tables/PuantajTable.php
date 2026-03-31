@@ -8,8 +8,8 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\Filter;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -32,8 +32,8 @@ class PuantajTable
                         default => 'gray',
                     }),
                 TextColumn::make('aciklama')->label('Açıklama')->limit(30)->placeholder('–')->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('giris_saati')->label('Giriş')->formatStateUsing(fn ($s) => $s ? \Carbon\Carbon::parse($s)->format('H:i') : '–')->toggleable(isToggledHiddenByDefault: true),
-                TextColumn::make('cikis_saati')->label('Çıkış')->formatStateUsing(fn ($s) => $s ? \Carbon\Carbon::parse($s)->format('H:i') : '–')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('giris_saati')->label('Giriş')->formatStateUsing(fn ($state) => filled($state) ? \Carbon\Carbon::parse($state)->format('H:i') : '–')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('cikis_saati')->label('Çıkış')->formatStateUsing(fn ($state) => filled($state) ? \Carbon\Carbon::parse($state)->format('H:i') : '–')->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('durum')
@@ -57,6 +57,7 @@ class PuantajTable
                         if ($data['tarih_to'] ?? null) {
                             $query->whereDate('tarih', '<=', $data['tarih_to']);
                         }
+
                         return $query;
                     }),
             ])

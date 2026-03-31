@@ -2,17 +2,21 @@
 
 namespace App\Filament\Musteri\Resources;
 
-use App\Filament\Musteri\Resources\OrderResource\Pages\ListOrders;
-use App\Filament\Musteri\Resources\OrderResource\Pages\ViewOrder;
+use App\Filament\Musteri\Resources\OrderResource\Pages;
+use App\Filament\Resources\Orders\Schemas\OrderForm;
 use App\Filament\Resources\Orders\Schemas\OrderInfolist;
 use App\Models\Order;
+use App\Models\User;
 use BackedEnum;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Facades\Auth;
 
 class OrderResource extends Resource
 {
@@ -30,9 +34,29 @@ class OrderResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedShoppingCart;
 
+    protected static ?int $navigationSort = 0;
+
+    protected static function authUser(): ?User
+    {
+        $user = Auth::user();
+
+        return $user instanceof User ? $user : null;
+    }
+
+    public static function form(Schema $schema): Schema
+    {
+        $user = self::authUser();
+        $ctx = ($user && $user->hasRole('bayi')) ? OrderForm::CONTEXT_BAYI : OrderForm::CONTEXT_ADMIN;
+
+        return OrderForm::configure($schema, $ctx);
+    }
+
     public static function infolist(Schema $schema): Schema
     {
-        return OrderInfolist::configure($schema);
+        $user = self::authUser();
+        $ctx = ($user && $user->hasRole('bayi')) ? OrderInfolist::CONTEXT_BAYI : OrderInfolist::CONTEXT_ADMIN;
+
+        return OrderInfolist::configure($schema, $ctx);
     }
 
     public static function table(Table $table): Table
@@ -46,27 +70,39 @@ class OrderResource extends Resource
                 return $query;
             })
             ->columns([
-                TextColumn::make('siparis_no')->label('Sipariş No')->searchable()->sortable(),
+                TextColumn::make('siparis_no')->label('Talep / sipariş no')->searchable()->sortable(),
+                TextColumn::make('on_siparis_no')->label('Ön sip.')->placeholder('—'),
                 TextColumn::make('durum')->label('Durum')
                     ->badge()
                     ->formatStateUsing(fn ($state) => Order::durumEtiketi($state)),
                 TextColumn::make('siparis_tarihi')->label('Tarih')->date('d.m.Y')->sortable(),
+                TextColumn::make('items_count')->label('Kalem')->counts('items'),
             ])
             ->recordActions([
-                \Filament\Actions\ViewAction::make(),
+                ViewAction::make(),
+                EditAction::make()
+                    ->visible(function (Order $record) {
+                        if (! self::authUser()?->hasRole('bayi')) {
+                            return false;
+                        }
+
+                        return $record->durum === Order::DURUM_TASLAK;
+                    }),
             ]);
     }
 
     public static function getPages(): array
     {
         return [
-            'index' => ListOrders::route('/'),
-            'view' => ViewOrder::route('/{record}'),
+            'index' => Pages\ListOrders::route('/'),
+            'create' => Pages\CreateOrder::route('/create'),
+            'view' => Pages\ViewOrder::route('/{record}'),
+            'edit' => Pages\EditOrder::route('/{record}/edit'),
         ];
     }
 
     public static function canCreate(): bool
     {
-        return false;
+        return self::authUser()?->hasRole('bayi') ?? false;
     }
 }

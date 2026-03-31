@@ -15,8 +15,10 @@ use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Component;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Number;
 
 class ViewQuote extends ViewRecord
 {
@@ -39,23 +41,64 @@ class ViewQuote extends ViewRecord
     public function infolist(Schema $schema): Schema
     {
         return $schema
+            ->columns([
+                'default' => 1,
+                'lg' => 1,
+            ])
             ->record($this->getRecord())
             ->components([
                 Section::make('Teklif Bilgileri')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('teklif_no')->label('Teklif No'),
-                        TextEntry::make('durum')->label('Durum')->badge(),
+                        TextEntry::make('durum')
+                            ->label('Durum')
+                            ->badge()
+                            ->formatStateUsing(fn ($state) => match ((string) $state) {
+                                'taslak' => 'Taslak',
+                                'gonderildi' => 'Gönderildi',
+                                'musteri_teklif_verdi' => 'Karşı teklif verildi',
+                                'onaylandi' => 'Onaylandı',
+                                'reddedildi' => 'Reddedildi',
+                                default => filled($state) ? (string) $state : '—',
+                            })
+                            ->color(fn (?string $state): string => match ((string) $state) {
+                                'gonderildi' => 'info',
+                                'musteri_teklif_verdi' => 'warning',
+                                'onaylandi' => 'success',
+                                'reddedildi' => 'danger',
+                                default => 'gray',
+                            }),
                         TextEntry::make('dealer.unvan')->label('Müşteri'),
                         TextEntry::make('musteri_iskonto_yuzde')
                             ->label('İstenilen iskonto %')
-                            ->formatStateUsing(fn ($s) => $s !== null && $s !== '' ? number_format((float) $s, 2, ',', '.') : '—'),
+                            ->getStateUsing(function (Component $c): string {
+                                $record = $c->getContainer()->getRecord();
+                                if (! $record instanceof Quote || $record->musteri_iskonto_yuzde === null || $record->musteri_iskonto_yuzde === '') {
+                                    return '—';
+                                }
+
+                                return number_format((float) $record->musteri_iskonto_yuzde, 2, ',', '.');
+                            }),
                         TextEntry::make('musteri_net_tutar')
                             ->label('Net tutar (KDV hariç)')
-                            ->money('TRY')
-                            ->placeholder('—'),
+                            ->getStateUsing(function (Component $c): string {
+                                $record = $c->getContainer()->getRecord();
+                                if (! $record instanceof Quote || $record->musteri_net_tutar === null || $record->musteri_net_tutar === '') {
+                                    return '—';
+                                }
+
+                                return Number::currency((float) $record->musteri_net_tutar, 'TRY', config('app.locale'));
+                            }),
                         TextEntry::make('musteri_not')->label('Not / açıklama')->placeholder('—')->columnSpanFull(),
-                    ])->columns(3),
+                    ])
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                        'xl' => 3,
+                    ]),
                 Section::make('Kalemler')
+                    ->columnSpanFull()
                     ->schema([
                         TextEntry::make('_kalem_yok')
                             ->hiddenLabel()
@@ -65,12 +108,18 @@ class ViewQuote extends ViewRecord
                             ->schema([
                                 TextEntry::make('product.malzeme_aciklamasi')->label('Ürün'),
                                 TextEntry::make('birim_fiyat')->label('Teklif birim')->money('TRY'),
-                                TextEntry::make('musteri_maliyet_birim')->label('İstenilen maliyet birim')->money('TRY')->placeholder('—'),
-                                TextEntry::make('musteri_birim_fiyat')->label('İstenilen satış birim')->money('TRY')->placeholder('—'),
+                                TextEntry::make('musteri_maliyet_birim')->label('İstenilen maliyet birim fiyatı (₺)')->money('TRY')->placeholder('—'),
+                                TextEntry::make('musteri_birim_fiyat')->label('İstenilen satış birim fiyatı (₺)')->money('TRY')->placeholder('—'),
                                 TextEntry::make('adet')->label('Adet'),
                                 TextEntry::make('tutar')->label('Tutar')->money('TRY'),
                             ])
-                            ->columns(6)
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 2,
+                                'md' => 3,
+                                'lg' => 4,
+                                'xl' => 6,
+                            ])
                             ->visible(fn (): bool => $this->getRecord()->items->isNotEmpty()),
                     ]),
             ]);
@@ -133,21 +182,27 @@ class ViewQuote extends ViewRecord
                                 TextInput::make('birim_fiyat')->label('Teklif birim fiyatı')->disabled()->dehydrated(false),
                                 TextInput::make('adet')->label('Adet')->disabled()->dehydrated(false),
                                 TextInput::make('musteri_maliyet_birim')
-                                    ->label('İstenilen maliyet birim (₺)')
-                                    ->helperText('Önerdiğiniz maliyet / taban birim tutarı.')
+                                    ->label('İstenilen maliyet birim fiyatı (₺)')
+                                    ->helperText('Ürün başına önerdiğiniz maliyet / taban tutarı.')
                                     ->numeric()
                                     ->step(0.0001)
                                     ->formatStateUsing(fn ($s) => $s !== null && $s !== '' ? NumberFormat::formatForInput((float) $s, 4) : null)
                                     ->dehydrateStateUsing(fn ($s) => NumberFormat::parseInput($s)),
                                 TextInput::make('musteri_birim_fiyat')
                                     ->label('İstenilen satış birim fiyatı (₺)')
-                                    ->helperText('Boş bırakırsanız, satır tutarı maliyet biriminden hesaplanır (varsa).')
+                                    ->helperText('Ürün başına önerdiğiniz satış fiyatı. Boş bırakırsanız satır tutarı maliyet birim fiyatından hesaplanır (o da yoksa teklifteki birim fiyattan).')
                                     ->numeric()
                                     ->step(0.0001)
                                     ->formatStateUsing(fn ($s) => $s !== null && $s !== '' ? NumberFormat::formatForInput((float) $s, 4) : null)
                                     ->dehydrateStateUsing(fn ($s) => NumberFormat::parseInput($s)),
                             ])
-                            ->columns(6)
+                            ->columns([
+                                'default' => 1,
+                                'sm' => 2,
+                                'md' => 3,
+                                'lg' => 4,
+                                'xl' => 6,
+                            ])
                             ->addable(false)
                             ->deletable(false)
                             ->reorderable(false);

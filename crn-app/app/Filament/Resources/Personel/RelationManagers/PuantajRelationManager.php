@@ -38,8 +38,8 @@ class PuantajRelationManager extends RelationManager
                         default => 'gray',
                     }),
                 TextColumn::make('aciklama')->label('Açıklama')->limit(40)->placeholder('–'),
-                TextColumn::make('giris_saati')->label('Giriş')->formatStateUsing(fn ($s) => $s ? \Carbon\Carbon::parse($s)->format('H:i') : '–'),
-                TextColumn::make('cikis_saati')->label('Çıkış')->formatStateUsing(fn ($s) => $s ? \Carbon\Carbon::parse($s)->format('H:i') : '–'),
+                TextColumn::make('giris_saati')->label('Giriş')->formatStateUsing(fn ($state) => filled($state) ? \Carbon\Carbon::parse($state)->format('H:i') : '–'),
+                TextColumn::make('cikis_saati')->label('Çıkış')->formatStateUsing(fn ($state) => filled($state) ? \Carbon\Carbon::parse($state)->format('H:i') : '–'),
             ])
             ->defaultSort('tarih', 'desc')
             ->filters([])
@@ -60,6 +60,7 @@ class PuantajRelationManager extends RelationManager
                     ])
                     ->mutateFormDataUsing(function (array $data): array {
                         $data['personel_id'] = $this->getOwnerRecord()->getKey();
+
                         return $data;
                     }),
             ])

@@ -9,7 +9,7 @@ class OrderItem extends Model
 {
     protected $guarded = [];
 
-    protected $fillable = ['order_id', 'product_id', 'birim_fiyat', 'adet', 'tutar'];
+    protected $fillable = ['order_id', 'product_id', 'birim_fiyat', 'adet', 'tutar', 'bayi_karsi_birim_fiyat'];
 
     protected $casts = [
         'birim_fiyat' => 'decimal:4',

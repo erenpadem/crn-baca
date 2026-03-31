@@ -1,16 +1,24 @@
-{{-- Excel örnek Sipariş/Teklif formuna sadık - CRN Baca --}}
+{{-- Panel teklif infolist / kalem tablosu ile uyumlu - CRN Baca --}}
+@php
+    use App\Services\FormExportService;
+    $netKdvsiz = FormExportService::quoteNetKdvsizForKdv($quote);
+    $kdvYuzde = FormExportService::quoteKdvOraniYuzde();
+    $kdvTutari = round($netKdvsiz * ($kdvYuzde / 100), 4);
+    $genelToplam = round($netKdvsiz + $kdvTutari, 4);
+    $kalemToplam = (float) $quote->items->sum(fn ($i) => (float) ($i->tutar ?? ($i->birim_fiyat * $i->adet)));
+@endphp
 <!DOCTYPE html>
 <html lang="tr">
 <head>
     <meta charset="UTF-8">
     <title>Teklif Formu - {{ $quote->teklif_no }}</title>
     <style>
-        body { font-family: DejaVu Sans, sans-serif; font-size: 10px; }
+        body { font-family: DejaVu Sans, sans-serif; font-size: 8px; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { border: 1px solid #333; padding: 4px 6px; text-align: left; }
+        th, td { border: 1px solid #333; padding: 3px 4px; text-align: left; }
         th { background: #eee; }
-        .header-table td { border: none; padding: 2px 8px 2px 0; }
-        .label { font-weight: bold; width: 140px; }
+        .header-table td { border: none; padding: 2px 6px 2px 0; }
+        .label { font-weight: bold; width: 120px; }
         .text-right { text-align: right; }
         .toplam-row { font-weight: bold; }
     </style>
@@ -55,9 +63,6 @@
         </tr>
     </table>
     <br>
-    @php
-        $teklifAraToplam = $quote->items->sum(fn ($i) => (float) ($i->tutar ?? ($i->birim_fiyat * $i->adet)));
-    @endphp
     <table>
         <thead>
             <tr>
@@ -65,8 +70,10 @@
                 <th>MALZEME KODU</th>
                 <th>MALZEME AÇIKLAMASI</th>
                 <th>BİRİM</th>
-                <th>BİRİM FİYAT</th>
+                <th>BİRİM FİYAT (İÇ)</th>
                 <th>ADET</th>
+                <th>MÜŞ. MALİYET</th>
+                <th>MÜŞ. SATIŞ</th>
                 <th>TUTAR</th>
             </tr>
         </thead>
@@ -78,8 +85,10 @@
                 <td>{{ $item->product?->malzeme_kodu ?? '' }}</td>
                 <td>{{ $item->product?->malzeme_aciklamasi ?? '' }}</td>
                 <td>{{ $item->product?->birim ?? 'AD' }}</td>
-                <td class="text-right">{{ number_format($item->birim_fiyat, 2, ',', '.') }}</td>
-                <td class="text-right">{{ number_format($item->adet, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float) $item->birim_fiyat, 2, ',', '.') }}</td>
+                <td class="text-right">{{ number_format((float) $item->adet, 2, ',', '.') }}</td>
+                <td class="text-right">{{ $item->musteri_maliyet_birim !== null ? number_format((float) $item->musteri_maliyet_birim, 2, ',', '.') : '—' }}</td>
+                <td class="text-right">{{ $item->musteri_birim_fiyat !== null ? number_format((float) $item->musteri_birim_fiyat, 2, ',', '.') : '—' }}</td>
                 <td class="text-right">{{ number_format($satirTutar, 2, ',', '.') }}</td>
             </tr>
             @endforeach
@@ -89,23 +98,31 @@
     <table class="header-table">
         <tr>
             <td class="label">İskonto %:</td>
-            <td>{{ $quote->musteri_iskonto_yuzde !== null ? number_format($quote->musteri_iskonto_yuzde, 2) : '' }}</td>
-        </tr>
-        <tr class="toplam-row">
-            <td class="label">Ara Toplam:</td>
-            <td class="text-right">{{ number_format($teklifAraToplam, 2, ',', '.') }} TL</td>
+            <td>{{ $quote->musteri_iskonto_yuzde !== null ? number_format((float) $quote->musteri_iskonto_yuzde, 2, ',', '.') : '—' }}</td>
         </tr>
         <tr>
-            <td class="label">KDV (%18):</td>
-            <td class="text-right">{{ number_format($teklifAraToplam * 0.18, 2, ',', '.') }} TL</td>
+            <td class="label">Müşteri net (KDV hariç, manuel):</td>
+            <td>{{ $quote->musteri_net_tutar !== null ? number_format((float) $quote->musteri_net_tutar, 2, ',', '.') . ' TL' : '—' }}</td>
+        </tr>
+        <tr class="toplam-row">
+            <td class="label">Kalem toplamı (satır tutarları):</td>
+            <td class="text-right">{{ number_format($kalemToplam, 2, ',', '.') }} TL</td>
+        </tr>
+        <tr class="toplam-row">
+            <td class="label">Net tutar (KDV matrahı):</td>
+            <td class="text-right">{{ number_format($netKdvsiz, 2, ',', '.') }} TL</td>
+        </tr>
+        <tr>
+            <td class="label">KDV (%{{ (int) round($kdvYuzde) }}):</td>
+            <td class="text-right">{{ number_format($kdvTutari, 2, ',', '.') }} TL</td>
         </tr>
         <tr class="toplam-row">
             <td class="label">TOPLAM:</td>
-            <td class="text-right">{{ number_format($teklifAraToplam * 1.18, 2, ',', '.') }} TL</td>
+            <td class="text-right">{{ number_format($genelToplam, 2, ',', '.') }} TL</td>
         </tr>
         @if($quote->musteri_not)
         <tr>
-            <td class="label">Açıklama:</td>
+            <td class="label">Müşteri notu:</td>
             <td>{{ $quote->musteri_not }}</td>
         </tr>
         @endif

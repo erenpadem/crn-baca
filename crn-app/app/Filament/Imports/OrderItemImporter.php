@@ -22,6 +22,7 @@ class OrderItemImporter extends Importer
             ImportColumn::make('malzeme_kodu')->label('Malzeme Kodu')->requiredMapping()->rules(['required']),
             ImportColumn::make('birim_fiyat')->label('Birim Fiyat')->numeric()->requiredMapping()->rules(['required', 'numeric']),
             ImportColumn::make('adet')->label('Adet')->numeric()->ignoreBlankState()->rules(['nullable', 'numeric']),
+            ImportColumn::make('bayi_karsi_birim_fiyat')->label('Karşı teklif birim fiyat')->numeric()->ignoreBlankState()->rules(['nullable', 'numeric']),
         ];
     }
 
@@ -36,12 +37,17 @@ class OrderItemImporter extends Importer
             throw ValidationException::withMessages(['malzeme_kodu' => 'Ürün bulunamadı: '.($this->data['malzeme_kodu'] ?? '')]);
         }
 
-        return new OrderItem([
+        $row = [
             'order_id' => $order->id,
             'product_id' => $product->id,
             'birim_fiyat' => (float) ($this->data['birim_fiyat'] ?? 0),
             'adet' => (float) ($this->data['adet'] ?? 1),
-        ]);
+        ];
+        if (isset($this->data['bayi_karsi_birim_fiyat']) && $this->data['bayi_karsi_birim_fiyat'] !== '' && $this->data['bayi_karsi_birim_fiyat'] !== null) {
+            $row['bayi_karsi_birim_fiyat'] = (float) $this->data['bayi_karsi_birim_fiyat'];
+        }
+
+        return new OrderItem($row);
     }
 
     public static function getCompletedNotificationBody(Import $import): string

@@ -7,7 +7,6 @@ use App\Filament\Musteri\Resources\QuoteResource\Pages\ViewQuote;
 use App\Models\Quote;
 use Filament\Facades\Filament;
 use Filament\Resources\Resource;
-use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 
@@ -35,6 +34,7 @@ class QuoteResource extends Resource
                 if (Filament::getTenant()) {
                     $query->where('dealer_id', Filament::getTenant()->getKey());
                 }
+
                 return $query;
             })
             ->summaries(false, false)
@@ -43,7 +43,7 @@ class QuoteResource extends Resource
                 TextColumn::make('durum')->label('Durum')->badge()->formatStateUsing(fn ($state) => match ((string) $state) {
                     'taslak' => 'Taslak',
                     'gonderildi' => 'Gönderildi',
-                    'musteri_teklif_verdi' => 'Müşteri Teklif Verdi',
+                    'musteri_teklif_verdi' => 'Karşı teklif verildi',
                     'onaylandi' => 'Onaylandı',
                     'reddedildi' => 'Reddedildi',
                     default => filled($state) ? (string) $state : 'Taslak',
