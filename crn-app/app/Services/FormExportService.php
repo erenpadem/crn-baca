@@ -248,10 +248,10 @@ class FormExportService
         $sheet->getStyle('A'.$row)->getFill()->setFillType(Fill::FILL_SOLID)->getStartColor()->setRGB('E8F5E9');
         $row++;
         $sheet->setCellValue('A'.$row, 'Baca çapı (mm)');
-        $sheet->setCellValue('B'.$row, $order->bac_cap_mm !== null ? (float) $order->bac_cap_mm : '');
+        $sheet->setCellValue('B'.$row, $order->bac_cap_mm !== null ? Order::formatMmForDisplay($order->bac_cap_mm, '') : '');
         $row++;
         $sheet->setCellValue('A'.$row, 'Baca yüksekliği (mm)');
-        $sheet->setCellValue('B'.$row, $order->bac_yukseklik_mm !== null ? (float) $order->bac_yukseklik_mm : '');
+        $sheet->setCellValue('B'.$row, $order->bac_yukseklik_mm !== null ? Order::formatMmForDisplay($order->bac_yukseklik_mm, '') : '');
         $row++;
         $sheet->setCellValue('A'.$row, 'Yön');
         $sheet->setCellValue('B'.$row, self::orderYonEtiketi($order->yon) ?: '–');
@@ -454,8 +454,8 @@ class FormExportService
             fputcsv($out, ['Cihaz Marka - Model', $order->cihaz_marka_model ?? ''], ';');
             fputcsv($out, [''], ';');
             fputcsv($out, ['=== TEKNİK / ÖZELLİK ==='], ';');
-            fputcsv($out, ['Baca çapı (mm)', $order->bac_cap_mm !== null ? $fmt($order->bac_cap_mm) : ''], ';');
-            fputcsv($out, ['Baca yüksekliği (mm)', $order->bac_yukseklik_mm !== null ? $fmt($order->bac_yukseklik_mm) : ''], ';');
+            fputcsv($out, ['Baca çapı (mm)', $order->bac_cap_mm !== null ? Order::formatMmForDisplay($order->bac_cap_mm, '') : ''], ';');
+            fputcsv($out, ['Baca yüksekliği (mm)', $order->bac_yukseklik_mm !== null ? Order::formatMmForDisplay($order->bac_yukseklik_mm, '') : ''], ';');
             fputcsv($out, ['Yön', self::orderYonEtiketi($order->yon) ?: '–'], ';');
             fputcsv($out, ['Çizim / form özellikleri', $ozellikCsv !== '' ? $ozellikCsv : '–'], ';');
             fputcsv($out, [''], ';');

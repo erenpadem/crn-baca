@@ -68,7 +68,7 @@ class ViewOrder extends ViewRecord
                         ->minValue(0)
                         ->maxValue(100)
                         ->step(0.01)
-                        ->formatStateUsing(fn ($s) => $s !== null && $s !== '' ? NumberFormat::formatForInput((float) $s, 2) : null)
+                        ->formatStateUsing(fn ($state) => $state !== null && $state !== '' ? NumberFormat::formatForInput((float) $state, 2) : null)
                         ->dehydrateStateUsing(fn ($s) => NumberFormat::parseInput($s))
                         ->default($record->bayi_karsi_iskonto_yuzde),
                     Repeater::make('karsi_kalemler')
@@ -81,7 +81,7 @@ class ViewOrder extends ViewRecord
                                 ->label('Önerdiğiniz birim fiyat (₺)')
                                 ->numeric()
                                 ->step(0.0001)
-                                ->formatStateUsing(fn ($s) => $s !== null && $s !== '' ? NumberFormat::formatForInput((float) $s, 4) : null)
+                                ->formatStateUsing(fn ($state) => $state !== null && $state !== '' ? NumberFormat::formatForInput((float) $state, 4) : null)
                                 ->dehydrateStateUsing(fn ($s) => NumberFormat::parseInput($s)),
                         ])
                         ->columns([

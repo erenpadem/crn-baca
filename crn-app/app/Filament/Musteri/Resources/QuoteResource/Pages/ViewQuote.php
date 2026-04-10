@@ -186,14 +186,14 @@ class ViewQuote extends ViewRecord
                                     ->helperText('Ürün başına önerdiğiniz maliyet / taban tutarı.')
                                     ->numeric()
                                     ->step(0.0001)
-                                    ->formatStateUsing(fn ($s) => $s !== null && $s !== '' ? NumberFormat::formatForInput((float) $s, 4) : null)
+                                    ->formatStateUsing(fn ($state) => $state !== null && $state !== '' ? NumberFormat::formatForInput((float) $state, 4) : null)
                                     ->dehydrateStateUsing(fn ($s) => NumberFormat::parseInput($s)),
                                 TextInput::make('musteri_birim_fiyat')
                                     ->label('İstenilen satış birim fiyatı (₺)')
                                     ->helperText('Ürün başına önerdiğiniz satış fiyatı. Boş bırakırsanız satır tutarı maliyet birim fiyatından hesaplanır (o da yoksa teklifteki birim fiyattan).')
                                     ->numeric()
                                     ->step(0.0001)
-                                    ->formatStateUsing(fn ($s) => $s !== null && $s !== '' ? NumberFormat::formatForInput((float) $s, 4) : null)
+                                    ->formatStateUsing(fn ($state) => $state !== null && $state !== '' ? NumberFormat::formatForInput((float) $state, 4) : null)
                                     ->dehydrateStateUsing(fn ($s) => NumberFormat::parseInput($s)),
                             ])
                             ->columns([
@@ -268,7 +268,7 @@ class ViewQuote extends ViewRecord
             ->minValue(0)
             ->maxValue(100)
             ->step(0.01)
-            ->formatStateUsing(fn ($s) => $s !== null && $s !== '' ? NumberFormat::formatForInput((float) $s, 2) : null)
+            ->formatStateUsing(fn ($state) => $state !== null && $state !== '' ? NumberFormat::formatForInput((float) $state, 2) : null)
             ->dehydrateStateUsing(fn ($s) => NumberFormat::parseInput($s));
     }
 
@@ -279,7 +279,7 @@ class ViewQuote extends ViewRecord
             ->helperText('Toplam net tutarı doğrudan girmek için.')
             ->numeric()
             ->step(0.01)
-            ->formatStateUsing(fn ($s) => $s !== null && $s !== '' ? NumberFormat::formatForInput((float) $s, 2) : null)
+            ->formatStateUsing(fn ($state) => $state !== null && $state !== '' ? NumberFormat::formatForInput((float) $state, 2) : null)
             ->dehydrateStateUsing(fn ($s) => NumberFormat::parseInput($s));
     }
 

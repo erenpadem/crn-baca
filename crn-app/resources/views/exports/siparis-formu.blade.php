@@ -66,9 +66,9 @@
         </tr>
         <tr>
             <td class="label">Baca çapı (mm):</td>
-            <td>{{ $order->bac_cap_mm !== null ? number_format((float) $order->bac_cap_mm, 2, ',', '.') : '—' }}</td>
+            <td>{{ \App\Models\Order::formatMmForDisplay($order->bac_cap_mm, '—') }}</td>
             <td class="label">Baca yüksekliği (mm):</td>
-            <td colspan="2">{{ $order->bac_yukseklik_mm !== null ? number_format((float) $order->bac_yukseklik_mm, 2, ',', '.') : '—' }}</td>
+            <td colspan="2">{{ \App\Models\Order::formatMmForDisplay($order->bac_yukseklik_mm, '—') }}</td>
         </tr>
         <tr>
             <td class="label">Yön:</td>

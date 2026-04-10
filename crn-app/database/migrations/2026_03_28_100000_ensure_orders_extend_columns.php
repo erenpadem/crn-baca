@@ -36,7 +36,9 @@ return new class extends Migration
         $addOrders('kur', fn (Blueprint $t, string $c) => $t->decimal($c, 14, 4)->nullable());
         $addOrders('kur_farki_yuzde', fn (Blueprint $t, string $c) => $t->decimal($c, 5, 2)->nullable()->default(10));
         $addOrders('tutar_kdvsiz_on', fn (Blueprint $t, string $c) => $t->decimal($c, 16, 4)->nullable());
+        $addOrders('is_manual_on', fn (Blueprint $t, string $c) => $t->boolean($c)->default(false));
         $addOrders('tutar_kdvsiz_nihai', fn (Blueprint $t, string $c) => $t->decimal($c, 16, 4)->nullable());
+        $addOrders('is_manual_nihai', fn (Blueprint $t, string $c) => $t->boolean($c)->default(false));
 
         $addOrders('opsiyonel_nakliye', fn (Blueprint $t, string $c) => $t->boolean($c)->default(false));
         $addOrders('nakliye_tutari', fn (Blueprint $t, string $c) => $t->decimal($c, 16, 4)->nullable());

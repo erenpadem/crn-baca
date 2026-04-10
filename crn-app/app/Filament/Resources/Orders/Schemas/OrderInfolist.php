@@ -48,8 +48,8 @@ class OrderInfolist
                             ->formatStateUsing(fn ($state) => Order::durumEtiketi($state)),
                         TextEntry::make('proje_adi')->label('Proje Adı'),
                         TextEntry::make('cihaz_marka_model')->label('Cihaz Marka/Model'),
-                        self::decimalEntry('bac_cap_mm', 'Baca çapı (mm)'),
-                        self::decimalEntry('bac_yukseklik_mm', 'Baca yüksekliği (mm)'),
+                        self::mmEntry('bac_cap_mm', 'Baca çapı (mm)'),
+                        self::mmEntry('bac_yukseklik_mm', 'Baca yüksekliği (mm)'),
                         TextEntry::make('yon')
                             ->label('Yön')
                             ->badge()
@@ -73,7 +73,8 @@ class OrderInfolist
                                 default => 'gray',
                             }),
                         TextEntry::make('ozellik_etiketleri')->label('Çizim / form özellik kodları (hangileri geçerli)')
-                            ->getStateUsing(function (?Order $record): array {
+                            ->getStateUsing(function (Component $c): array {
+                                $record = self::orderFromInfolistComponent($c);
                                 if (! $record) {
                                     return [];
                                 }
@@ -93,7 +94,7 @@ class OrderInfolist
                         TextEntry::make('aciklama')->label('Açıklama')->getConstantStateUsing(fn (Component $c) => $c->getContainer()->getRecord()?->aciklama)->placeholder('–'),
                         TextEntry::make('kvkk_onay')->label('KVKK / onay')
                             ->visible(fn () => $isBayi)
-                            ->formatStateUsing(fn ($s) => $s ? 'Evet' : 'Hayır'),
+                            ->formatStateUsing(fn ($state) => $state ? 'Evet' : 'Hayır'),
                         TextEntry::make('bayi_fiyat_bekliyor_bilgi')
                             ->hiddenLabel()
                             ->visible(function (Component $c) use ($isBayi): bool {
@@ -114,6 +115,7 @@ class OrderInfolist
                         'xl' => 3,
                     ]),
                 Section::make('Kur ve tutarlar (KDV hariç)')
+                    ->description('«Kur» referans bilgisidir; TRY tutarlarına çarpan uygulanmaz. Manuel ön/nihai tutarlar yalnızca ilgili bayrak açıkken hesaba katılır.')
                     ->columnSpanFull()
                     ->visible(fn (Component $c) => ! $isBayi || self::bayiPricingUnlocked($c))
                     ->schema([
@@ -121,6 +123,24 @@ class OrderInfolist
                         self::decimalEntry('kur_farki_yuzde', 'Kur farkı %'),
                         self::decimalEntry('tutar_kdvsiz_on', 'Ön tutar (manuel)'),
                         self::decimalEntry('tutar_kdvsiz_nihai', 'Nihai tutar (manuel)'),
+                        TextEntry::make('on_kaynak')->label('Ön tutar kaynağı')
+                            ->getStateUsing(function (Component $c): string {
+                                $o = self::orderFromInfolistComponent($c);
+                                if (! $o) {
+                                    return '—';
+                                }
+
+                                return $o->is_manual_on ? 'Manuel (onaylı)' : 'Kalemler + iskonto';
+                            }),
+                        TextEntry::make('nihai_kaynak')->label('Nihai taban kaynağı')
+                            ->getStateUsing(function (Component $c): string {
+                                $o = self::orderFromInfolistComponent($c);
+                                if (! $o) {
+                                    return '—';
+                                }
+
+                                return $o->is_manual_nihai ? 'Manuel (onaylı)' : 'Ön tutar × (1 + kur farkı % / 100)';
+                            }),
                     ])
                     ->columns([
                         'default' => 1,
@@ -131,15 +151,32 @@ class OrderInfolist
                     ->visible(fn (Component $c) => ! $isBayi || self::bayiPricingUnlocked($c))
                     ->schema([
                         TextEntry::make('nakliye_ozet')->label('Nakliye')
-                            ->getStateUsing(fn (?Order $record): string => $record && $record->opsiyonel_nakliye ? self::fmtMoney((float) $record->nakliye_tutari) : '—'),
+                            ->getStateUsing(function (Component $c): string {
+                                $record = self::orderFromInfolistComponent($c);
+
+                                return $record && $record->opsiyonel_nakliye ? self::fmtMoney((float) $record->nakliye_tutari) : '—';
+                            }),
                         TextEntry::make('akreditif_ozet')->label('Akreditif')
-                            ->getStateUsing(fn (?Order $record): string => $record && $record->opsiyonel_akreditif ? self::fmtMoney((float) $record->akreditif_tutari) : '—'),
+                            ->getStateUsing(function (Component $c): string {
+                                $record = self::orderFromInfolistComponent($c);
+
+                                return $record && $record->opsiyonel_akreditif ? self::fmtMoney((float) $record->akreditif_tutari) : '—';
+                            }),
                         TextEntry::make('montaj_ozet')->label('Montaj')
-                            ->getStateUsing(fn (?Order $record): string => $record && $record->opsiyonel_montaj ? self::fmtMoney((float) $record->montaj_tutari) : '—'),
+                            ->getStateUsing(function (Component $c): string {
+                                $record = self::orderFromInfolistComponent($c);
+
+                                return $record && $record->opsiyonel_montaj ? self::fmtMoney((float) $record->montaj_tutari) : '—';
+                            }),
                         TextEntry::make('havalandirma_ozet')->label('Havalandırma')
-                            ->getStateUsing(fn (?Order $record): string => $record && $record->opsiyonel_havalandirma ? self::fmtMoney((float) $record->havalandirma_tutari) : '—'),
+                            ->getStateUsing(function (Component $c): string {
+                                $record = self::orderFromInfolistComponent($c);
+
+                                return $record && $record->opsiyonel_havalandirma ? self::fmtMoney((float) $record->havalandirma_tutari) : '—';
+                            }),
                         TextEntry::make('diger_ozet')->label('Diğer')
-                            ->getStateUsing(function (?Order $record): string {
+                            ->getStateUsing(function (Component $c): string {
+                                $record = self::orderFromInfolistComponent($c);
                                 if (! $record || ! $record->opsiyonel_diger) {
                                     return '—';
                                 }
@@ -158,19 +195,73 @@ class OrderInfolist
                     ->visible(fn (Component $c) => ! $isBayi || self::bayiPricingUnlocked($c))
                     ->schema([
                         TextEntry::make('kalem_net_kdvsiz')->label('Kalem toplamı (iskonto sonrası, KDV hariç)')
-                            ->formatStateUsing(fn ($s) => self::fmtMoney((float) $s)),
+                            ->getStateUsing(function (Component $c): float {
+                                $record = self::orderFromInfolistComponent($c);
+                                if (! $record) {
+                                    return 0.0;
+                                }
+                                $record->loadMissing('items');
+
+                                return (float) $record->kalem_net_kdvsiz;
+                            })
+                            ->formatStateUsing(fn ($state) => self::fmtMoney((float) $state)),
                         TextEntry::make('hesaplanan_kdvsiz_on')->label('Ön tutar (hesaplanan)')
-                            ->formatStateUsing(fn ($s) => self::fmtMoney((float) $s)),
+                            ->getStateUsing(function (Component $c): float {
+                                $record = self::orderFromInfolistComponent($c);
+                                if (! $record) {
+                                    return 0.0;
+                                }
+                                $record->loadMissing('items');
+
+                                return (float) $record->hesaplanan_kdvsiz_on;
+                            })
+                            ->formatStateUsing(fn ($state) => self::fmtMoney((float) $state)),
                         TextEntry::make('hesaplanan_kdvsiz_nihai')->label('Nihai taban (kur farkı sonrası)')
-                            ->formatStateUsing(fn ($s) => self::fmtMoney((float) $s)),
+                            ->getStateUsing(function (Component $c): float {
+                                $record = self::orderFromInfolistComponent($c);
+                                if (! $record) {
+                                    return 0.0;
+                                }
+                                $record->loadMissing('items');
+
+                                return (float) $record->hesaplanan_kdvsiz_nihai;
+                            })
+                            ->formatStateUsing(fn ($state) => self::fmtMoney((float) $state)),
                         TextEntry::make('ara_toplam_kdvsiz')->label('Ara toplam (KDV hariç)')
-                            ->formatStateUsing(fn ($s) => self::fmtMoney((float) $s)),
+                            ->getStateUsing(function (Component $c): float {
+                                $record = self::orderFromInfolistComponent($c);
+                                if (! $record) {
+                                    return 0.0;
+                                }
+                                $record->loadMissing('items');
+
+                                return (float) $record->ara_toplam_kdvsiz;
+                            })
+                            ->formatStateUsing(fn ($state) => self::fmtMoney((float) $state)),
                         TextEntry::make('kdv_tutari')->label('KDV tutarı')
-                            ->formatStateUsing(fn ($s) => self::fmtMoney((float) $s)),
+                            ->getStateUsing(function (Component $c): float {
+                                $record = self::orderFromInfolistComponent($c);
+                                if (! $record) {
+                                    return 0.0;
+                                }
+                                $record->loadMissing('items');
+
+                                return (float) $record->kdv_tutari;
+                            })
+                            ->formatStateUsing(fn ($state) => self::fmtMoney((float) $state)),
                         TextEntry::make('genel_toplam')->label('Genel toplam')
-                            ->formatStateUsing(fn ($s) => self::fmtMoney((float) $s))->weight('bold'),
-                        TextEntry::make('kdv_orani')->label('KDV %')->formatStateUsing(fn ($s) => $s !== null ? number_format((float) $s, 2, ',', '.') : '20'),
-                        TextEntry::make('kvkk_onay')->label('KVKK / sipariş onayı')->formatStateUsing(fn ($s) => $s ? 'Evet' : 'Hayır'),
+                            ->getStateUsing(function (Component $c): float {
+                                $record = self::orderFromInfolistComponent($c);
+                                if (! $record) {
+                                    return 0.0;
+                                }
+                                $record->loadMissing('items');
+
+                                return (float) $record->genel_toplam;
+                            })
+                            ->formatStateUsing(fn ($state) => self::fmtMoney((float) $state))->weight('bold'),
+                        TextEntry::make('kdv_orani')->label('KDV %')->formatStateUsing(fn ($state) => $state !== null ? number_format((float) $state, 2, ',', '.') : '20'),
+                        TextEntry::make('kvkk_onay')->label('KVKK / sipariş onayı')->formatStateUsing(fn ($state) => $state ? 'Evet' : 'Hayır'),
                     ])
                     ->columns([
                         'default' => 1,
@@ -355,6 +446,15 @@ class OrderInfolist
     protected static function fmtMoney(float $n): string
     {
         return number_format($n, 2, ',', '.').' ₺';
+    }
+
+    protected static function mmEntry(string $name, string $label): TextEntry
+    {
+        return TextEntry::make($name)
+            ->label($label)
+            ->getConstantStateUsing(fn (Component $c) => $c->getContainer()->getRecord()?->getAttribute($name))
+            ->formatStateUsing(fn ($state) => Order::formatMmForDisplay($state))
+            ->placeholder('–');
     }
 
     protected static function decimalEntry(string $name, string $label): TextEntry

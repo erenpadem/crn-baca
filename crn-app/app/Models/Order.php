@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Services\OrderCalculator;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Order extends Model
 {
+    /** @var array<string, float|bool|null>|null */
+    protected ?array $pricingBreakdownCache = null;
+
     protected $guarded = [];
 
     public const DURUM_TASLAK = 'taslak';
@@ -60,7 +64,9 @@ class Order extends Model
         'kur' => 'decimal:4',
         'kur_farki_yuzde' => 'decimal:2',
         'tutar_kdvsiz_on' => 'decimal:4',
+        'is_manual_on' => 'boolean',
         'tutar_kdvsiz_nihai' => 'decimal:4',
+        'is_manual_nihai' => 'boolean',
         'opsiyonel_nakliye' => 'boolean',
         'nakliye_tutari' => 'decimal:4',
         'opsiyonel_akreditif' => 'boolean',
@@ -100,6 +106,31 @@ class Order extends Model
         return $this->hasMany(OrderItem::class, 'order_id');
     }
 
+    protected static function booted(): void
+    {
+        static::saving(function (Order $order): void {
+            if (! $order->is_manual_on) {
+                $order->tutar_kdvsiz_on = null;
+            }
+            if (! $order->is_manual_nihai) {
+                $order->tutar_kdvsiz_nihai = null;
+            }
+        });
+    }
+
+    public function refresh(): self
+    {
+        $this->pricingBreakdownCache = null;
+
+        return parent::refresh();
+    }
+
+    /** @return array<string, float|bool|null> */
+    public function getPricingBreakdown(): array
+    {
+        return $this->pricingBreakdownCache ??= app(OrderCalculator::class)->calculate($this);
+    }
+
     public function getToplamTutarAttribute(): float
     {
         return (float) $this->items->sum('tutar');
@@ -108,74 +139,57 @@ class Order extends Model
     /** Kalem toplamı, iskonto sonrası (KDV hariç). */
     public function getKalemNetKdvsizAttribute(): float
     {
-        $this->loadMissing('items');
-        $toplam = (float) $this->items->sum('tutar');
-        if ($this->iskonto_yuzde !== null && (float) $this->iskonto_yuzde > 0) {
-            $toplam *= 1 - ((float) $this->iskonto_yuzde / 100);
-        }
-
-        return round($toplam, 4);
+        return $this->getPricingBreakdown()['kalem_net_kdvsiz'];
     }
 
-    /** Ön tutar: manuel veya kalemlerden. */
+    /** Ön tutar: manuel (bayrak onaylı) veya kalemlerden. */
     public function getHesaplananKdvsizOnAttribute(): float
     {
-        if ($this->tutar_kdvsiz_on !== null) {
-            return round((float) $this->tutar_kdvsiz_on, 4);
-        }
-
-        return round($this->kalem_net_kdvsiz, 4);
+        return $this->getPricingBreakdown()['hesaplanan_kdvsiz_on'];
     }
 
     /** Kur farkı sonrası nihai taban (KDV hariç). */
     public function getHesaplananKdvsizNihaiAttribute(): float
     {
-        if ($this->tutar_kdvsiz_nihai !== null) {
-            return round((float) $this->tutar_kdvsiz_nihai, 4);
-        }
-        $on = $this->hesaplanan_kdvsiz_on;
-        $yuzde = (float) ($this->kur_farki_yuzde ?? 0);
-
-        return round($on * (1 + $yuzde / 100), 4);
+        return $this->getPricingBreakdown()['hesaplanan_kdvsiz_nihai'];
     }
 
     public function getOpsiyonelToplamKdvsizAttribute(): float
     {
-        $t = 0.0;
-        if ($this->opsiyonel_nakliye && $this->nakliye_tutari) {
-            $t += (float) $this->nakliye_tutari;
-        }
-        if ($this->opsiyonel_akreditif && $this->akreditif_tutari) {
-            $t += (float) $this->akreditif_tutari;
-        }
-        if ($this->opsiyonel_montaj && $this->montaj_tutari) {
-            $t += (float) $this->montaj_tutari;
-        }
-        if ($this->opsiyonel_havalandirma && $this->havalandirma_tutari) {
-            $t += (float) $this->havalandirma_tutari;
-        }
-        if ($this->opsiyonel_diger && $this->diger_tutari) {
-            $t += (float) $this->diger_tutari;
-        }
-
-        return round($t, 4);
+        return $this->getPricingBreakdown()['opsiyonel_toplam_kdvsiz'];
     }
 
     public function getAraToplamKdvsizAttribute(): float
     {
-        return round($this->hesaplanan_kdvsiz_nihai + $this->opsiyonel_toplam_kdvsiz, 4);
+        return $this->getPricingBreakdown()['ara_toplam_kdvsiz'];
     }
 
     public function getKdvTutariAttribute(): float
     {
-        $oran = (float) ($this->kdv_orani ?? 20);
-
-        return round($this->ara_toplam_kdvsiz * ($oran / 100), 4);
+        return $this->getPricingBreakdown()['kdv_tutari'];
     }
 
     public function getGenelToplamAttribute(): float
     {
-        return round($this->ara_toplam_kdvsiz + $this->kdv_tutari, 4);
+        return $this->getPricingBreakdown()['genel_toplam'];
+    }
+
+    /**
+     * Baca çapı / yükseklik (mm) için gösterim: tam sayılarda ondalık yok (örn. 300), gerekirse en fazla bir ondalık.
+     *
+     * @param  string  $whenEmpty  Boş değerde dönecek metin (ör. infolist '–', CSV '').
+     */
+    public static function formatMmForDisplay(mixed $value, string $whenEmpty = '–'): string
+    {
+        if ($value === null || $value === '') {
+            return $whenEmpty;
+        }
+        $f = (float) $value;
+        if (abs($f - round($f)) < 0.0001) {
+            return number_format((int) round($f), 0, ',', '.');
+        }
+
+        return number_format($f, 1, ',', '.');
     }
 
     public static function durumEtiketi(?string $durum): string

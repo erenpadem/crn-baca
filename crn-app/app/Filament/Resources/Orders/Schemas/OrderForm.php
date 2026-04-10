@@ -64,8 +64,8 @@ class OrderForm
                         DatePicker::make('siparis_tarihi')->label('Sipariş Tarihi')->required()->default(now()),
                         TextInput::make('proje_adi')->label('Proje Adı')->maxLength(255),
                         TextInput::make('cihaz_marka_model')->label('Cihaz Marka/Model')->maxLength(255),
-                        self::decimalInput('bac_cap_mm', 'Baca çapı (mm)', null),
-                        self::decimalInput('bac_yukseklik_mm', 'Baca yüksekliği (mm)', null),
+                        self::mmInput('bac_cap_mm', 'Baca çapı (mm)'),
+                        self::mmInput('bac_yukseklik_mm', 'Baca yüksekliği (mm)'),
                         Select::make('yon')
                             ->label('Yön')
                             ->options([
@@ -119,14 +119,27 @@ class OrderForm
                         'xl' => 3,
                     ]),
                 Section::make('Kur ve ön / nihai tutar (KDV hariç)')
-                    ->description('Boş bırakılan tutarlar kalemler ve iskontodan otomatik hesaplanır. Kur farkı % örneği: 10 → taban tutara %10 ekler.')
+                    ->description('Manuel anahtarları kapalıyken ön tutar kalemler + iskontodan, nihai taban ise ön tutar × (1 + kur farkı % / 100) ile hesaplanır. «Kur» alanı referans içindir; TRY tutarlarını çarpmaz.')
                     ->columnSpanFull()
                     ->visible(fn () => ! $isBayi)
                     ->schema([
-                        self::decimalInput('kur', 'Kur', null),
+                        self::decimalInput('kur', 'Kur', null)
+                            ->helperText('Referans bilgisi; hesaplanan tutarlara uygulanmaz.'),
                         self::decimalInput('kur_farki_yuzde', 'Kur farkı %', 10),
-                        self::decimalInput('tutar_kdvsiz_on', 'Ön tutar (KDV hariç, manuel)', null),
-                        self::decimalInput('tutar_kdvsiz_nihai', 'Nihai tutar (KDV hariç, manuel)', null),
+                        Toggle::make('is_manual_on')
+                            ->label('Ön tutarı manuel kullan')
+                            ->helperText('Açıksa aşağıdaki tutar geçerli; kapalıysa sadece kalemler + iskonto kullanılır.')
+                            ->live()
+                            ->columnSpanFull(),
+                        self::decimalInput('tutar_kdvsiz_on', 'Ön tutar (KDV hariç, manuel)', null)
+                            ->visible(fn ($get) => $get('is_manual_on')),
+                        Toggle::make('is_manual_nihai')
+                            ->label('Nihai tabanı manuel kullan')
+                            ->helperText('Açıksa aşağıdaki tutar geçerli; kapalıysa ön tutar × (1 + kur farkı % / 100).')
+                            ->live()
+                            ->columnSpanFull(),
+                        self::decimalInput('tutar_kdvsiz_nihai', 'Nihai tutar (KDV hariç, manuel)', null)
+                            ->visible(fn ($get) => $get('is_manual_nihai')),
                     ])
                     ->columns([
                         'default' => 1,
@@ -230,6 +243,34 @@ class OrderForm
             ]);
     }
 
+    /** Baca ölçüleri: tam sayı mm, ondalıksız gösterim. */
+    protected static function mmInput(string $name, string $label): TextInput
+    {
+        return TextInput::make($name)
+            ->label($label)
+            ->integer()
+            ->nullable()
+            ->afterStateHydrated(function (TextInput $component): void {
+                $state = $component->getState();
+                if ($state === null || $state === '') {
+                    return;
+                }
+                $v = str_replace(',', '.', (string) $state);
+                if (! is_numeric($v)) {
+                    return;
+                }
+                $component->state((string) (int) round((float) $v));
+            })
+            ->dehydrateStateUsing(function ($state) {
+                if ($state === '' || $state === null) {
+                    return null;
+                }
+                $v = str_replace(',', '.', (string) $state);
+
+                return is_numeric($v) ? (float) (int) round((float) $v) : null;
+            });
+    }
+
     protected static function decimalInput(string $name, string $label, $default = null): TextInput
     {
         return TextInput::make($name)
@@ -244,9 +285,38 @@ class OrderForm
                 if ($state === '' || $state === null) {
                     return $default;
                 }
-                $v = str_replace(',', '.', (string) $state);
+                $parsed = self::parseDecimalInput($state);
 
-                return is_numeric($v) ? (float) $v : $default;
+                return $parsed !== null ? $parsed : $default;
             });
+    }
+
+    /**
+     * TR biçimi (1.234,56) ve düz ondalık (1234.56) için güvenli ayrıştırma.
+     * Basit virgül→nokta dönüşümü "1.234,56" → "1.234.56" yapıp geçersiz sayı üretirdi.
+     */
+    protected static function parseDecimalInput(mixed $state): ?float
+    {
+        if ($state === '' || $state === null) {
+            return null;
+        }
+        if (is_int($state) || is_float($state)) {
+            return (float) $state;
+        }
+        $s = trim(str_replace(["\u{00A0}", ' '], '', (string) $state));
+        if ($s === '') {
+            return null;
+        }
+        if (is_numeric($s)) {
+            return (float) $s;
+        }
+        if (str_contains($s, ',')) {
+            $parts = explode(',', $s, 2);
+            $integerPart = str_replace('.', '', $parts[0]);
+            $decimalPart = $parts[1] ?? '';
+            $s = $integerPart.($decimalPart !== '' ? '.'.$decimalPart : '');
+        }
+
+        return is_numeric($s) ? (float) $s : null;
     }
 }
